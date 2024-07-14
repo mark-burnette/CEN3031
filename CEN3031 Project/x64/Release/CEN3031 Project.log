@@ -1,0 +1,39 @@
+﻿  imgui_impl_dx11.cpp
+  imgui_impl_win32.cpp
+  imgui.cpp
+  imgui_demo.cpp
+  imgui_draw.cpp
+  imgui_tables.cpp
+  imgui_widgets.cpp
+  main.cpp
+  sql_test.cpp
+C:\Users\sambu\Desktop\CEN3031\CEN3031 Project\sql_test.cpp(87,21): warning C4101: 'stmt': unreferenced local variable
+     Creating library C:\Users\sambu\Desktop\CEN3031\x64\Release\CEN3031 Project.lib and object C:\Users\sambu\Desktop\CEN3031\x64\Release\CEN3031 Project.exp
+  Generating code
+  2500 of 2507 functions (99.7%) were compiled, the rest were copied from previous compilation.
+    33 functions were new in current compilation
+    1 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+mysqlcppconn-static.lib(mysql_driver.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_driver.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_connection.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_connection.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_native_driver_wrapper.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_native_driver_wrapper.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_uri.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_uri.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_metadata.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_metadata.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_warning.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_warning.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_prepared_statement.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_prepared_statement.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_statement.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_statement.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_debug.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_debug.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_client_api.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_client_api.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_native_connection_wrapper.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_native_connection_wrapper.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_util.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_util.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_art_resultset.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_art_resultset.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_resultbind.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_resultbind.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_ps_resultset.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_ps_resultset.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_ps_resultset_metadata.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_ps_resultset_metadata.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_parameter_metadata.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_parameter_metadata.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_resultset.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_resultset.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_native_resultset_wrapper.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_native_resultset_wrapper.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_native_statement_wrapper.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_native_statement_wrapper.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_art_rset_metadata.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_art_rset_metadata.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+mysqlcppconn-static.lib(mysql_resultset_metadata.obj) : warning LNK4099: PDB 'jdbc.pdb' was not found with 'mysqlcppconn-static.lib(mysql_resultset_metadata.obj)' or at 'C:\Users\sambu\Desktop\CEN3031\x64\Release\jdbc.pdb'; linking object as if no debug info
+  CEN3031 Project.vcxproj -> C:\Users\sambu\Desktop\CEN3031\x64\Release\CEN3031 Project.exe
