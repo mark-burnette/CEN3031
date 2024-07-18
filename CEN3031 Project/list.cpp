@@ -11,7 +11,7 @@ bool list = false;
 #include "stb_image.h"
 
 // cache of book covers (id, img filename)
-std::unordered_map<int, std::string> cache;
+std::unordered_map<std::string, std::string> cache;
 
 // credits: https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
 // Simple helper function to load an image into a DX11 texture with common settings
@@ -65,21 +65,25 @@ sql::ResultSet* previous_results = nullptr;
 
 int listings(sql::ResultSet* search_results)
 {
+    // if not rendering window, return
     if (!list)
         return 0;
 
-    // TODO: need to fix this
-    if (search_results && !previous_results)
+    if (search_results)
         previous_results = search_results;
+
+    previous_results->beforeFirst();
 
     ImGui::Begin("Listings");
 
-    if (!previous_results)
+    if (!previous_results || !previous_results->next())
     {
         ImGui::Text("No results.");
         ImGui::End();
         return 0;
     }
+
+    previous_results->beforeFirst();
 
     int id = 0;
     while (previous_results->next())
@@ -95,16 +99,19 @@ int listings(sql::ResultSet* search_results)
         {
             ImGui::Text(previous_results->getString("Book-Author").c_str());
 
-            // download book cover photo (TODO: cache result and delete on program exit)
-            if (cache.find(id) == cache.end())
+            std::string filename{ previous_results->getString("ISBN").c_str() };
+            filename.append(std::to_string(id));
+
+            // download book cover photo
+            if (cache.find(filename) == cache.end())
             {
                 const char* url = previous_results->getString("Image-URL-M").c_str();
 
-                HRESULT hr = URLDownloadToFileA(NULL, url, std::to_string(id).c_str(), 0, NULL);
+                HRESULT hr = URLDownloadToFileA(NULL, url, filename.c_str(), 0, NULL);
                 if (hr == S_OK)
                 {
-                    std::cout << "File downloaded successfully to " << std::to_string(id).c_str() << std::endl;
-                    cache[id] = std::to_string(id).c_str();
+                    std::cout << "File downloaded successfully to " << filename.c_str() << std::endl;
+                    cache[filename] = filename.c_str();
                 }
                 else
                     std::cout << "Failed to download file. HRESULT: " << hr << std::endl; // TODO: change
@@ -114,14 +121,13 @@ int listings(sql::ResultSet* search_results)
             int my_image_width = 0;
             int my_image_height = 0;
             ID3D11ShaderResourceView* my_texture = NULL;
-            bool ret = LoadTextureFromFile(std::to_string(id).c_str(), &my_texture, &my_image_width, &my_image_height);
+            bool ret = LoadTextureFromFile(cache[filename].c_str(), &my_texture, &my_image_width, &my_image_height);
             IM_ASSERT(ret);
 
             ImGui::Image((void*)my_texture, ImVec2(my_image_width, my_image_height));
             ImGui::Button("Request Checkout");
         }
     }
-    previous_results->beforeFirst();
 
     ImGui::End();
 }
