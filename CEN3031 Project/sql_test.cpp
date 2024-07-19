@@ -14,7 +14,7 @@
 
 #include "imgui.h"
 
-//for demonstration only. never save your password in the code!
+// TODO: make/move global vars
 const std::string server = "tcp://127.0.0.1:3306";
 const std::string db_username = "root";
 const std::string db_password = "ADMIN";
@@ -59,9 +59,9 @@ std::string hash_password(const std::string& password)
     }
 }
 
-int setup_sql()
+int register_user()
 {
-	ImGui::Begin("Login Form");
+	ImGui::Begin("Registration Form");
 
     static char username[32] = {};
     static char password[32] = {};
@@ -70,9 +70,9 @@ int setup_sql()
 	ImGui::InputText("Username", username, sizeof(username));
 	ImGui::InputText("Password", password, sizeof(password), ImGuiInputTextFlags_Password);
 
-    if (ImGui::Button("Login"))
+    if (ImGui::Button("Register"))
     {
-        // login attempted, process
+        // registration attempted, process
         if (strlen(username) > 0 && strlen(password) > 0)
             password_hash = hash_password(password);
     }
@@ -82,10 +82,10 @@ int setup_sql()
     if (password_hash.length() <= 0)
         return 0;
 
-    sql::Driver* driver;
-    sql::Connection* con;
-    sql::Statement* stmt;
-    sql::PreparedStatement* pstmt;
+    sql::Driver* driver = nullptr;
+    sql::Connection* con = nullptr;
+    sql::Statement* stmt = nullptr;
+    sql::PreparedStatement* pstmt = nullptr;
 
     try
     {
@@ -108,20 +108,16 @@ int setup_sql()
     {
         std::cout << "Error: " << e.what() << std::endl;
 
-        /*
         delete pstmt;
         delete con;
         delete stmt;
-        */
 
         return 1;
     }
 
-    /*
 	delete pstmt;
 	delete con;
 	delete stmt;
-    */
 
     return 0;
 }

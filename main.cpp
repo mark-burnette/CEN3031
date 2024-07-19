@@ -12,8 +12,10 @@
 #include <d3d11.h>
 #include <tchar.h>
 
+#include "CEN3031 Project/list.h"
+
 // Data
-static ID3D11Device*            g_pd3dDevice = nullptr;
+ID3D11Device*                   g_pd3dDevice = nullptr;
 static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain*          g_pSwapChain = nullptr;
 static bool                     g_SwapChainOccluded = false;
@@ -27,7 +29,9 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-int setup_sql();
+// TODO: put in header files
+int register_user();
+sql::ResultSet* search_form();
 
 // Main code
 int main(int, char**)
@@ -129,6 +133,7 @@ int main(int, char**)
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 
+        /*
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
         {
             static float f = 0.0f;
@@ -151,6 +156,7 @@ int main(int, char**)
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::End();
         }
+        */
 
         // 3. Show another simple window.
         if (show_another_window)
@@ -162,7 +168,9 @@ int main(int, char**)
             ImGui::End();
         }
 
-        setup_sql();
+        register_user();
+        sql::ResultSet* search_results = search_form();
+        listings(search_results);
 
         // Rendering
         ImGui::Render();
@@ -185,6 +193,9 @@ int main(int, char**)
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+
+    for (const auto& img : cache)
+        DeleteFileA(img.second.c_str());
 
     return 0;
 }
