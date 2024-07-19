@@ -17,7 +17,7 @@
 //for demonstration only. never save your password in the code!
 const std::string server = "tcp://127.0.0.1:3306";
 const std::string db_username = "root";
-const std::string db_password = "toor";
+const std::string db_password = "ADMIN";
 
 std::string hash_password(const std::string& password)
 {
