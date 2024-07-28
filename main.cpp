@@ -13,6 +13,7 @@
 #include <tchar.h>
 
 #include "CEN3031 Project/list.h"
+#include "CEN3031 Project/calendar.h"
 
 // Data
 ID3D11Device*                   g_pd3dDevice = nullptr;
@@ -171,6 +172,7 @@ int main(int, char**)
         register_user();
         sql::ResultSet* search_results = search_form();
         listings(search_results);
+        draw_calendar(getEvents());
 
         // Rendering
         ImGui::Render();

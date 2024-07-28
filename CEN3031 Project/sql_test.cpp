@@ -13,11 +13,7 @@
 #include <sstream>
 
 #include "imgui.h"
-
-// TODO: make/move global vars
-const std::string server = "tcp://127.0.0.1:3306";
-const std::string db_username = "root";
-const std::string db_password = "toor";
+#include "search.h"
 
 std::string hash_password(const std::string& password)
 {
