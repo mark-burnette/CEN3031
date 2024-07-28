@@ -16,6 +16,7 @@
 #include "CEN3031 Project/search.h"
 #include "CEN3031 Project/register.h"
 #include "CEN3031 Project/panel.h"
+#include "CEN3031 Project/calendar.h"
 
 // Data
 ID3D11Device*                   g_pd3dDevice = nullptr;
@@ -170,6 +171,7 @@ int main(int, char**)
 
 		user = login_register(con);
         panel(con, user);
+        draw_calendar(getEvents(con));
 
         // Rendering
         ImGui::Render();
