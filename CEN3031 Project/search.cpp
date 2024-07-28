@@ -5,11 +5,7 @@
 
 #include "imgui.h"
 #include "list.h"
-
-// TODO: make/move these
-const std::string server = "tcp://127.0.0.1:3306";
-const std::string db_username = "root";
-const std::string db_password = "toor";
+#include "search.h"
 
 // TODO: use global var so that there's only one return of result set
 sql::ResultSet* search_form()
