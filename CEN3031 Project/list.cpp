@@ -63,28 +63,31 @@ bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_sr
 
 sql::ResultSet* previous_results = nullptr;
 
-int listings(sql::ResultSet* search_results)
+int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSet* user)
 {
     // if not rendering window, return
     if (!list)
-        return 0;
+        return 1;
 
     if (search_results)
         previous_results = search_results;
 
     previous_results->beforeFirst();
 
-    ImGui::Begin("Listings");
+    ImGui::BeginChild("Listings", ImVec2(800, 500), 0, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::Spacing();
+	ImGui::SeparatorText("Results");
 
     if (!previous_results || !previous_results->next())
     {
         ImGui::Text("No results.");
-        ImGui::End();
+        ImGui::EndChild();
         return 0;
     }
 
     previous_results->beforeFirst();
 
+    // unique id for ImGui
     int id = 0;
     while (previous_results->next())
     {
@@ -110,11 +113,11 @@ int listings(sql::ResultSet* search_results)
                 HRESULT hr = URLDownloadToFileA(NULL, url, filename.c_str(), 0, NULL);
                 if (hr == S_OK)
                 {
-                    std::cout << "File downloaded successfully to " << filename.c_str() << std::endl;
+                    // std::cout << "File downloaded successfully to " << filename.c_str() << std::endl; // debugging
                     cache[filename] = filename.c_str();
                 }
                 else
-                    std::cout << "Failed to download file. HRESULT: " << hr << std::endl; // TODO: change
+                    std::cerr << "Failed to download file. HRESULT: " << hr << std::endl; // TODO: change
             }
 
             // load the image; credits: https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
@@ -125,9 +128,38 @@ int listings(sql::ResultSet* search_results)
             IM_ASSERT(ret);
 
             ImGui::Image((void*)my_texture, ImVec2(my_image_width, my_image_height));
-            ImGui::Button("Request Checkout");
+
+            // checkout button
+            if (ImGui::Button((std::string("Request Checkout##").append(std::to_string(id)).c_str())))
+            {
+                sql::PreparedStatement* pstmt = nullptr;
+                try
+                {
+                    // if not logged in, force login
+                    if (!user)
+                    {
+                    }
+                    // if logged in, add book to account
+                    else
+                    {
+                        pstmt = con->prepareStatement("INSERT INTO requested_checkouts (ISBN, user, title, date_requested) VALUES (?, ?, ?, CURDATE())");
+
+                        pstmt->setString(1, previous_results->getString("ISBN"));
+                        pstmt->setInt(2, user->getInt("id"));
+                        pstmt->setString(3, previous_results->getString("Book-Title"));
+                        pstmt->execute();
+                    }
+                }
+                catch (const sql::SQLException& e) // TODO: go through catch blocks and add ImGui::End()
+                {
+					std::cout << "Error: " << e.what() << std::endl;
+				}
+
+                delete pstmt;
+                pstmt = nullptr;
+            }
         }
     }
-
-    ImGui::End();
+    ImGui::EndChild();
+    return 0;
 }
