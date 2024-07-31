@@ -34,9 +34,7 @@ void draw_calendar(std::vector<Event*> totEvents) {
 		}
 	}
 
-	// Create window
 	ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
-	ImGui::Begin("Event Calendar");
 
 	if (ImGui::BeginTabBar("Events", tab_bar_flags))
 	{
@@ -72,6 +70,7 @@ void draw_calendar(std::vector<Event*> totEvents) {
 		ImGui::EndTabBar();
 	}
 }
+
 std::vector<Event*> getEvents(sql::Connection* con)
 {
 	std::vector<Event*> events;

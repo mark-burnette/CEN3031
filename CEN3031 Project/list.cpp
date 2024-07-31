@@ -3,6 +3,7 @@ bool list = false;
 #include <d3d11.h>
 
 #include <unordered_map>
+#include <time.h>
 
 #include "imgui.h"
 #include "list.h"
@@ -61,105 +62,167 @@ bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_sr
     return true;
 }
 
-sql::ResultSet* previous_results = nullptr;
+bool has_overdue_items(sql::Connection* con, sql::ResultSet* user)
+{
+	sql::PreparedStatement* pstmt = con->prepareStatement("SELECT * FROM books WHERE `checked-out-by` = ? AND CURDATE() > `expiration-date`");
+
+	user->first();
+	pstmt->setInt(1, user->getInt("id"));
+	pstmt->execute();
+
+	sql::ResultSet* res = pstmt->getResultSet();
+	if (res && res->first())
+		return true;
+
+	return false;
+}
 
 int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSet* user)
 {
-    // if not rendering window, return
-    if (!list)
-        return 1;
+	if (!list)
+		return 1;
 
-    if (search_results)
-        previous_results = search_results;
-
-    previous_results->beforeFirst();
-
-    ImGui::BeginChild("Listings", ImVec2(800, 500), 0, ImGuiWindowFlags_HorizontalScrollbar);
-    ImGui::Spacing();
+	ImGui::BeginChild("Listings", ImVec2(800, 500), 0, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::Spacing();
 	ImGui::SeparatorText("Results");
 
-    if (!previous_results || !previous_results->next())
-    {
-        ImGui::Text("No results.");
-        ImGui::EndChild();
-        return 0;
-    }
+	if (search_results)
+		search_results->beforeFirst();
 
-    previous_results->beforeFirst();
+	if (!search_results || !search_results->next())
+	{
+		ImGui::Text("No results.");
+		ImGui::EndChild();
+		return 0;
+	}
 
-    // unique id for ImGui
-    int id = 0;
-    while (previous_results->next())
-    {
-        id++;
-        std::string header{ previous_results->getString("Book-Title").c_str() };
-        header.append(" (ISBN: ");
-		header.append(previous_results->getString("ISBN").c_str());
-        header.append(")##");
-        header.append(std::to_string(id));
+	sql::PreparedStatement* pstmt = nullptr;
 
-        if (ImGui::CollapsingHeader(header.c_str()))
-        {
-            ImGui::Text(previous_results->getString("Book-Author").c_str());
+	try
+	{
+		// if not rendering window, return
+		// unique id for ImGui
+		int id = 0;
+		search_results->beforeFirst();
+		while (search_results->next())
+		{
+			id++;
+			std::string header{ search_results->getString("Book-Title").c_str() };
+			header.append(" (ISBN: ");
+			header.append(search_results->getString("ISBN").c_str());
+			header.append(")##");
+			header.append(std::to_string(id));
 
-            std::string filename{ previous_results->getString("ISBN").c_str() };
-            filename.append(std::to_string(id));
+			if (ImGui::CollapsingHeader(header.c_str()))
+			{
+				ImGui::Text("Author: ");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("Book-Author").c_str());
 
-            // download book cover photo
-            if (cache.find(filename) == cache.end())
-            {
-                const char* url = previous_results->getString("Image-URL-M").c_str();
-
-                HRESULT hr = URLDownloadToFileA(NULL, url, filename.c_str(), 0, NULL);
-                if (hr == S_OK)
-                {
-                    // std::cout << "File downloaded successfully to " << filename.c_str() << std::endl; // debugging
-                    cache[filename] = filename.c_str();
-                }
-                else
-                    std::cerr << "Failed to download file. HRESULT: " << hr << std::endl; // TODO: change
-            }
-
-            // load the image; credits: https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
-            int my_image_width = 0;
-            int my_image_height = 0;
-            ID3D11ShaderResourceView* my_texture = NULL;
-            bool ret = LoadTextureFromFile(cache[filename].c_str(), &my_texture, &my_image_width, &my_image_height);
-            IM_ASSERT(ret);
-
-            ImGui::Image((void*)my_texture, ImVec2(my_image_width, my_image_height));
-
-            // checkout button
-            if (ImGui::Button((std::string("Request Checkout##").append(std::to_string(id)).c_str())))
-            {
-                sql::PreparedStatement* pstmt = nullptr;
-                try
-                {
-                    // if not logged in, force login
-                    if (!user)
-                    {
-                    }
-                    // if logged in, add book to account
-                    else
-                    {
-                        pstmt = con->prepareStatement("INSERT INTO requested_checkouts (ISBN, user, title, date_requested) VALUES (?, ?, ?, CURDATE())");
-
-                        pstmt->setString(1, previous_results->getString("ISBN"));
-                        pstmt->setInt(2, user->getInt("id"));
-                        pstmt->setString(3, previous_results->getString("Book-Title"));
-                        pstmt->execute();
-                    }
-                }
-                catch (const sql::SQLException& e) // TODO: go through catch blocks and add ImGui::End()
-                {
-					std::cout << "Error: " << e.what() << std::endl;
+				if (search_results->getString("checked-out-by").length() > 0)
+				{
+					ImGui::Text("Unavailable");
+					ImGui::Text("To be returned by: ");
+					ImGui::SameLine(); ImGui::Text(search_results->getString("expiration-date").c_str());
 				}
 
-                delete pstmt;
-                pstmt = nullptr;
-            }
-        }
-    }
+				std::string filename{ search_results->getString("ISBN").c_str() };
+				filename.append(std::to_string(id));
+
+				// download book cover photo
+				if (cache.find(filename) == cache.end())
+				{
+					const char* url = search_results->getString("Image-URL-M").c_str();
+
+					HRESULT hr = URLDownloadToFileA(NULL, url, filename.c_str(), 0, NULL);
+					if (hr == S_OK)
+					{
+						// std::cout << "File downloaded successfully to " << filename.c_str() << std::endl; // debugging
+						cache[filename] = filename.c_str();
+					}
+					else
+						std::cerr << "Failed to download file. HRESULT: " << hr << std::endl; // TODO: change
+				}
+
+				// load the image; credits: https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
+				int my_image_width = 0;
+				int my_image_height = 0;
+				ID3D11ShaderResourceView* my_texture = NULL;
+				bool ret = LoadTextureFromFile(cache[filename].c_str(), &my_texture, &my_image_width, &my_image_height);
+				IM_ASSERT(ret);
+
+				ImGui::Image((void*)my_texture, ImVec2(my_image_width, my_image_height));
+
+				// get checkout time 
+				std::time_t time = std::time(nullptr);
+				std::tm local_time;
+				localtime_s(&local_time, &time);
+
+				static char date[11] = {};
+				strftime(date, 11, "%Y-%m-%d", &local_time);
+
+				bool schedule_checkout = false;
+				ImGui::SetNextItemWidth(ImGui::CalcTextSize("(YYYY-MM-DD)").x);
+				ImGui::InputText("Checkout date (YYYY-MM-DD)", date, 11);
+
+				schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+
+				if (schedule_checkout)
+				{
+					if (!user)
+					{
+						// if not logged in, force login
+                        ImGui::OpenPopup("Not logged in");
+					}
+					else if (has_overdue_items(con, user))
+					{
+						// if user has overdue items, reject checkout
+						ImGui::OpenPopup("Overdue items");
+					}
+					else
+					{
+						// otherwise, process checkout
+						std::string req{ "INSERT INTO requested_checkouts (ISBN, user, title, date_requested) VALUES (?, ?, ?, '" };
+						req += date;
+						req += "')";
+
+						pstmt = con->prepareStatement(req.c_str());
+
+						pstmt->setString(1, search_results->getString("ISBN"));
+
+						user->first();
+
+						pstmt->setInt(2, user->getInt("id"));
+						pstmt->setString(3, search_results->getString("Book-Title"));
+						pstmt->execute();
+
+						delete pstmt;
+						pstmt = nullptr;
+
+						memset(date, 0, 11);
+					}
+				}
+
+				if (ImGui::BeginPopup("Not logged in"))
+				{
+					ImGui::Text("You are not logged in.");
+					ImGui::EndPopup();
+				}
+
+				if (ImGui::BeginPopup("Overdue items"))
+				{
+					ImGui::Text("Please return any overdue items before checking out new ones.");
+					ImGui::EndPopup();
+				}
+			}
+		}
+	}
+	catch (const sql::SQLException& e)
+	{
+		std::cerr << "Error: " << e.what() << std::endl;
+		delete pstmt;
+		pstmt = nullptr;
+	}
+
     ImGui::EndChild();
     return 0;
 }

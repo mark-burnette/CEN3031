@@ -8,44 +8,44 @@
 
 sql::ResultSet* search_form(sql::Connection* con)
 {
-    static char title[64] = {};
+    static char title[256] = {};
 
-    ImGui::Text("Search for a book:");
+    ImGui::SeparatorText("Search for a book:");
     ImGui::InputText("Title", title, sizeof(title));
 
-    sql::Statement* stmt = nullptr;
     sql::PreparedStatement* pstmt = nullptr;
-    sql::ResultSet* search_results = nullptr;
+    static sql::ResultSet* search_results = nullptr;
 
-    if (!ImGui::Button("Search"))
+    if (ImGui::Button("Search"))
     {
-        // search not yet attempted
-        return nullptr;
-    }
+        try
+        {
+            pstmt = con->prepareStatement("SELECT * FROM books WHERE `Book-Title` LIKE ?");
+            std::string _title{ "%" };
+            _title.append(title);
+            _title.append("%");
+            pstmt->setString(1, _title.c_str());
+            pstmt->execute();
 
-    try
-    {
-        pstmt = con->prepareStatement("SELECT * FROM books WHERE `Book-Title` LIKE ?");
-        std::string _title{"%"};
-        _title.append(title);
-        _title.append("%");
-        pstmt->setString(1, _title.c_str());
-        pstmt->execute();
+            search_results = pstmt->getResultSet();
 
-        search_results = pstmt->getResultSet();
+            list = true;
 
-        list = true;
-        
-        memset(title, 0, sizeof(title));
-    }
-    catch (sql::SQLException e)
-    {
-        std::cout << "Error: " << e.what() << std::endl;
+            memset(title, 0, sizeof(title));
+        }
+        catch (sql::SQLException e)
+        {
+            std::cout << "Error: " << e.what() << std::endl;
 
-		delete pstmt;
-        return nullptr;
+            delete pstmt;
+            pstmt = nullptr;
+
+            return nullptr;
+        }
     }
 
     delete pstmt;
+    pstmt = nullptr;
+
     return search_results;
 }

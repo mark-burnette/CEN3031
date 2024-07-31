@@ -57,6 +57,45 @@ std::string hash_password(const std::string& password)
     }
 }
 
+void register_role(sql::Connection* con, const std::string& role, char* username, size_t username_length, char* password, size_t password_length)
+{
+	std::string password_hash{};
+
+    ImGui::InputText(std::string("Username##").append(role).c_str(), username, username_length);
+	ImGui::InputText(std::string("Password##").append(role).c_str(), password, password_length, ImGuiInputTextFlags_Password);
+
+	static bool error_adding_account = false;
+	if (ImGui::Button(std::string("Register##").append(role).c_str()))
+	{
+		// registration attempted, process
+		if (strlen(username) > 0 && strlen(password) > 0)
+			password_hash = hash_password(password);
+
+		if (password_hash.length() > 0)
+		{
+            sql::PreparedStatement* pstmt = nullptr;
+
+			pstmt = con->prepareStatement("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)");
+			pstmt->setString(1, username);
+			pstmt->setString(2, password_hash);
+			pstmt->setString(3, role.c_str());
+
+			error_adding_account = false;
+
+			try { pstmt->execute(); }
+			catch (const sql::SQLException& e) { error_adding_account = true; }
+
+			memset(username, 0, username_length);
+			memset(password, 0, password_length);
+			password_hash.clear();
+		}
+	}
+
+	if (error_adding_account)
+		ImGui::Text("Error: account already exists.");
+}
+
+// TODO: rewrite using register_role()
 sql::ResultSet* login_register(sql::Connection* con)
 {
     // lock window to top right corner
@@ -140,14 +179,17 @@ sql::ResultSet* login_register(sql::Connection* con)
         if (label == "Login Form##Login/Registration Form")
         {
             pstmt = con->prepareStatement("SELECT * FROM users WHERE username = ? AND password_hash = ?");
-			pstmt->setString(1, username);
-			pstmt->setString(2, password_hash);
+            pstmt->setString(1, username);
+            pstmt->setString(2, password_hash);
             pstmt->execute();
 
-			sql::ResultSet* res = pstmt->getResultSet();
+            sql::ResultSet* res = pstmt->getResultSet();
 
             if (!res->next())
-                res = nullptr;
+            {
+                delete res;
+				res = nullptr;
+			}
 
 			memset(username, 0, sizeof(username));
 			memset(password, 0, sizeof(password));

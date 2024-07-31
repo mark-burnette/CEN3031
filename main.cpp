@@ -171,7 +171,6 @@ int main(int, char**)
 
 		user = login_register(con);
         panel(con, user);
-        draw_calendar(getEvents(con));
 
         // Rendering
         ImGui::Render();
