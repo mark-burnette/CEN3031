@@ -38,13 +38,23 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 		{
 			// catalogue and events can be viewed by everyone
 			// TODO: change so that admins/employees cannot check out books
-			if (ImGui::BeginTabItem("Catalogue"))
+			if (ImGui::BeginTabItem("Books"))
 			{
 				sql::ResultSet* search_results = search_form(con);
 				listings(con, search_results, user);
 
 				ImGui::EndTabItem();
-				previous_tab = "Catalogue";
+				previous_tab = "Books";
+				search_results = nullptr;
+			}
+
+			if (ImGui::BeginTabItem("Movies"))
+			{
+				sql::ResultSet* search_results = search_movies(con);
+				movies_listings(con, search_results, user);
+
+				ImGui::EndTabItem();
+				previous_tab = "Movies";
 				search_results = nullptr;
 			}
 
