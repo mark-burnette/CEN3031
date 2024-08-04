@@ -312,18 +312,18 @@ int movies_listings(sql::Connection* con, sql::ResultSet* search_results, sql::R
 					else
 					{
 						// otherwise, process checkout
-						std::string req{ "INSERT INTO requested_checkouts (ISBN, user, title, date_requested) VALUES (?, ?, ?, '" };
+						std::string req{ "INSERT INTO requested_checkouts_movies (imdb_id, user, Title, date_requested) VALUES (?, ?, ?, '" };
 						req += date;
 						req += "')";
 
 						pstmt = con->prepareStatement(req.c_str());
 
-						pstmt->setString(1, search_results->getString("ISBN"));
+						pstmt->setString(1, search_results->getString("imdb_id"));
 
 						user->first();
 
 						pstmt->setInt(2, user->getInt("id"));
-						pstmt->setString(3, search_results->getString("Book-Title"));
+						pstmt->setString(3, search_results->getString("Title"));
 						pstmt->execute();
 
 						delete pstmt;
