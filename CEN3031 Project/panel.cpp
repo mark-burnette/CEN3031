@@ -476,6 +476,32 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 								memset(&_publisher, 0, sizeof(_publisher));
 								memset(&_year_published, 0, sizeof(_year_published));
 							}
+
+							static char _imdb_id[14] = {};
+							static char _movie_title[257] = {};
+							static char _year[5] = {};
+
+							ImGui::InputText("imdb_id", _imdb_id, sizeof(_imdb_id));
+							ImGui::InputText("Title##idk", _movie_title, sizeof(_movie_title));
+							ImGui::InputText("Year", _year, sizeof(_year));
+
+							if (ImGui::Button("Add movie"))
+							{
+								// add new entry
+								pstmt = con->prepareStatement("INSERT INTO movies (imdb_id, `Title`, `Year`) VALUES (?, ?, ?)");
+								pstmt->setString(1, _imdb_id);
+								pstmt->setString(2, _movie_title);
+								pstmt->setString(3, _year);
+
+								pstmt->execute();
+
+								delete pstmt;
+								pstmt = nullptr;
+
+								memset(&_imdb_id, 0, sizeof(_imdb_id));
+								memset(&_movie_title, 0, sizeof(_movie_title));
+								memset(&_year, 0, sizeof(_year));
+							}
 						}
 						if (ImGui::CollapsingHeader("Modify existing resources"))
 						{
