@@ -98,8 +98,6 @@ sql::ResultSet* search_movies(sql::Connection* con)
 				genres_str += "%";
 			}
 
-            std::cout << genres_str << std::endl;
-
             pstmt = con->prepareStatement("SELECT * FROM movies WHERE `Title` LIKE ? AND Genre LIKE ?");
             std::string _title{ "%" };
             _title.append(title);
