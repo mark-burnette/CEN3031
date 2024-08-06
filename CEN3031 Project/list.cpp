@@ -4,6 +4,8 @@ bool list = false;
 
 #include <unordered_map>
 #include <time.h>
+#include <sstream>
+#include <iomanip>
 
 #include "imgui.h"
 #include "list.h"
@@ -131,15 +133,33 @@ int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSe
 		{
 			id++;
 			std::string header{ search_results->getString("Book-Title").c_str() };
-			header.append(" (ISBN: ");
-			header.append(search_results->getString("ISBN").c_str());
-			header.append(")##");
+			header.append("##");
 			header.append(std::to_string(id));
 
 			if (ImGui::CollapsingHeader(header.c_str()))
 			{
-				ImGui::Text("Author: ");
+				ImGui::Text("Author:");
 				ImGui::SameLine(); ImGui::Text(search_results->getString("Book-Author").c_str());
+
+				ImGui::Text("Publisher:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("Publisher").c_str());
+				ImGui::SameLine(); ImGui::Text((std::string("(") + search_results->getString("Year-Of-Publication").c_str() + ")").c_str());
+
+				ImGui::Text("ISBN:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("ISBN").c_str());
+
+				ImGui::Text("Genre:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("genre").c_str());
+
+				ImGui::Text("Summary:");
+				ImGui::TextWrapped(search_results->getString("Summary").c_str());
+				ImGui::Spacing();
+
+				ImGui::Text("Location:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("location").c_str());
+
+				ImGui::Text("Number of copies:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("num_copies").c_str());
 
 				std::string filename{ search_results->getString("ISBN").c_str() };
 				filename.append(std::to_string(id));
@@ -169,19 +189,35 @@ int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSe
 				ImGui::Image((void*)my_texture, ImVec2(my_image_width, my_image_height));
 
 				// get checkout time 
-				std::time_t time = std::time(nullptr);
-				std::tm local_time;
-				localtime_s(&local_time, &time);
-
 				static char date[11] = {};
-				strftime(date, 11, "%Y-%m-%d", &local_time);
+				if (date[0] == '\0')
+				{
+					std::time_t time = std::time(nullptr);
+					std::tm local_time;
+					localtime_s(&local_time, &time);
+					strftime(date, 11, "%Y-%m-%d", &local_time);
+				}
 
 				bool schedule_checkout = false;
 				ImGui::SetNextItemWidth(ImGui::CalcTextSize("(YYYY-MM-DD)").x);
 				ImGui::InputText("Checkout date (YYYY-MM-DD)", date, 11);
 
-				// if item has been checked out, button should not work
-				if (search_results->getString("checked-out-by").length() > 0)
+				// if scheduled checkout time < item's expiration date, checkout should fail
+				std::stringstream date_stream{date};
+				std::tm _tm{};
+				date_stream >> std::get_time(&_tm, "%Y-%m-%d");
+				time_t time_1 = std::mktime(&_tm);
+
+				std::stringstream date_stream2{search_results->getString("expiration-date").c_str()};
+				std::tm _tm_2{};
+				date_stream2 >> std::get_time(&_tm_2, "%Y-%m-%d");
+				time_t time_2 = std::mktime(&_tm_2);
+
+				if (time_2 == -1 || difftime(time_1, time_2) > 0)
+				{
+					schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+				}
+				else
 				{
 					ImGui::BeginDisabled(true);
 					ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
@@ -190,10 +226,6 @@ int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSe
 					std::string unavailable_tooltip = std::string("[Unavailable] To be returned by: ");
 					unavailable_tooltip += search_results->getString("expiration-date").c_str();
 					ImGui::SetItemTooltip(unavailable_tooltip.c_str());
-				}
-				else
-				{
-					schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
 				}
 
 				if (schedule_checkout)
@@ -292,7 +324,6 @@ int movies_listings(sql::Connection* con, sql::ResultSet* search_results, sql::R
 			header.append(search_results->getString("Year").c_str());
 			header.append(")");
 
-
 			if (ImGui::CollapsingHeader(header.c_str()))
 			{
 				ImGui::Text("Genre: ");
@@ -306,19 +337,35 @@ int movies_listings(sql::Connection* con, sql::ResultSet* search_results, sql::R
 				ImGui::Text("\n");
 
 				// get checkout time 
-				std::time_t time = std::time(nullptr);
-				std::tm local_time;
-				localtime_s(&local_time, &time);
-
 				static char date[11] = {};
-				strftime(date, 11, "%Y-%m-%d", &local_time);
+				if (date[0] == '\0')
+				{
+					std::time_t time = std::time(nullptr);
+					std::tm local_time;
+					localtime_s(&local_time, &time);
+					strftime(date, 11, "%Y-%m-%d", &local_time);
+				}
 
 				bool schedule_checkout = false;
 				ImGui::SetNextItemWidth(ImGui::CalcTextSize("(YYYY-MM-DD)").x);
 				ImGui::InputText("Checkout date (YYYY-MM-DD)", date, 11);
 
-				// if item has been checked out, button should not work
-				if (search_results->getString("checked-out-by").length() > 0)
+				// if scheduled checkout time < item's expiration date, checkout should fail
+				std::stringstream date_stream{date};
+				std::tm _tm{};
+				date_stream >> std::get_time(&_tm, "%Y-%m-%d");
+				time_t time_1 = std::mktime(&_tm);
+
+				std::stringstream date_stream2{search_results->getString("expiration-date").c_str()};
+				std::tm _tm_2{};
+				date_stream2 >> std::get_time(&_tm_2, "%Y-%m-%d");
+				time_t time_2 = std::mktime(&_tm_2);
+
+				if (time_2 == -1 || difftime(time_1, time_2) > 0)
+				{
+					schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+				}
+				else
 				{
 					ImGui::BeginDisabled(true);
 					ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
@@ -327,16 +374,6 @@ int movies_listings(sql::Connection* con, sql::ResultSet* search_results, sql::R
 					std::string unavailable_tooltip = std::string("[Unavailable] To be returned by: ");
 					unavailable_tooltip += search_results->getString("expiration-date").c_str();
 					ImGui::SetItemTooltip(unavailable_tooltip.c_str());
-
-					/*
-					ImGui::SameLine(); ImGui::Text("[Unavailable]");
-					ImGui::SameLine(); ImGui::Text("To be returned by:");
-					ImGui::SameLine(); ImGui::Text(search_results->getString("expiration-date").c_str());
-					*/
-				}
-				else
-				{
-					schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
 				}
 
 				if (schedule_checkout)

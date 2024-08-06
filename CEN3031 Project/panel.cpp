@@ -354,9 +354,10 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 										delete pstmt;
 
 										// mark book as checked out and set return date for 1 month after checkout 
-										pstmt = con->prepareStatement("UPDATE books SET `checked-out-by` = ?, `date-checked-out` = CURDATE(), `expiration-date` = DATE_ADD(CURDATE(), INTERVAL 1 MONTH) WHERE ISBN = ?");
+										pstmt = con->prepareStatement("UPDATE books SET `checked-out-by` = ?, `date-checked-out` = CURDATE(), `expiration-date` = DATE_ADD(CURDATE(), INTERVAL 1 MONTH), `last-checked-out` = ? WHERE ISBN = ?");
 										pstmt->setInt(1, pending_books->getInt("user"));
-										pstmt->setString(2, pending_books->getString("ISBN"));
+										pstmt->setInt(2, pending_books->getInt("user"));
+										pstmt->setString(3, pending_books->getString("ISBN"));
 										pstmt->execute();
 
 										delete pstmt;
@@ -407,9 +408,10 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 										delete pstmt;
 
 										// mark book as checked out and set return date for 1 month after checkout 
-										pstmt = con->prepareStatement("UPDATE movies SET `checked-out-by` = ?, `date-checked-out` = CURDATE(), `expiration-date` = DATE_ADD(CURDATE(), INTERVAL 1 MONTH) WHERE imdb_id = ?");
+										pstmt = con->prepareStatement("UPDATE movies SET `checked-out-by` = ?, `date-checked-out` = CURDATE(), `expiration-date` = DATE_ADD(CURDATE(), INTERVAL 1 MONTH), `last-checked-out` = ? WHERE imdb_id = ?");
 										pstmt->setInt(1, pending_movies->getInt("user"));
-										pstmt->setString(2, pending_movies->getString("imdb_id"));
+										pstmt->setInt(2, pending_movies->getInt("user"));
+										pstmt->setString(3, pending_movies->getString("imdb_id"));
 										pstmt->execute();
 
 										delete pstmt;
@@ -594,8 +596,8 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 							}
 
 							ImGui::EndChild();
-							ImGui::EndTabItem();
 						}
+						ImGui::EndTabItem();
 					}
 
 					ImGui::Spacing();
