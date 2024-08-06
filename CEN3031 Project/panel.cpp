@@ -24,7 +24,7 @@
 *	tab to approve events
 */
 
-void panel(sql::Connection* con, sql::ResultSet* user)
+void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> events, bool &reload)
 {
 	ImGui::Begin("User Panel", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 
@@ -60,7 +60,7 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 
 			if (ImGui::BeginTabItem("Events"))
 			{
-				draw_calendar(getEvents(con));
+				draw_calendar(events, user, con, reload);
 				ImGui::EndTabItem();
 
 				previous_tab = "Events";
