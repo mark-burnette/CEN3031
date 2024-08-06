@@ -14,3 +14,4 @@ extern bool list;
 extern std::unordered_map<std::string, std::string> cache;
 int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSet* user);
 int movies_listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSet* user);
+bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
