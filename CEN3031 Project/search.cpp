@@ -81,15 +81,18 @@ sql::ResultSet* search_form(sql::Connection* con)
             params.push_back(_title);
 
             // description
-            std::stringstream desc_stream{ desc };
-
-            while (desc_stream.good())
+            if (desc[0] != '\0')
             {
-                std::string tmp{};
-                desc_stream >> tmp;
+				std::stringstream desc_stream{ desc };
 
-                query += " AND Summary LIKE ?";
-                params.push_back(std::string("%") + tmp + std::string("%"));
+				while (desc_stream.good())
+				{
+					std::string tmp{};
+					desc_stream >> tmp;
+
+					query += " AND Summary LIKE ?";
+					params.push_back(std::string("%") + tmp + std::string("%"));
+				}
             }
 
             // genres
@@ -235,31 +238,37 @@ sql::ResultSet* search_movies(sql::Connection* con)
             params.push_back(_title);
 
             // description
-            std::stringstream desc_stream{ desc };
-
-            while (desc_stream.good())
+            if (desc[0] != '\0')
             {
-                std::string tmp{};
-                desc_stream >> tmp;
+				std::stringstream desc_stream{ desc };
 
-                query += " AND Summary LIKE ?";
-                params.push_back(std::string("%") + tmp + std::string("%"));
+				while (desc_stream.good())
+				{
+					std::string tmp{};
+					desc_stream >> tmp;
+
+					query += " AND Summary LIKE ?";
+					params.push_back(std::string("%") + tmp + std::string("%"));
+				}
             }
 
             // genres
-            std::sort(selected_genres.begin(), selected_genres.end());
-
-            std::string genres_str{};
             if (selected_genres.size() > 0)
             {
-                query += " AND Genre LIKE ?";
-                for (int i : selected_genres)
+                std::sort(selected_genres.begin(), selected_genres.end());
+
+                std::string genres_str{};
+                if (selected_genres.size() > 0)
                 {
-                    genres_str += "%"; // SQL wildcard; matches zero or more characters
-                    genres_str += genres[i];
-                    genres_str += "%";
+                    query += " AND Genre LIKE ?";
+                    for (int i : selected_genres)
+                    {
+                        genres_str += "%"; // SQL wildcard; matches zero or more characters
+                        genres_str += genres[i];
+                        genres_str += "%";
+                    }
+                    params.push_back(genres_str);
                 }
-                params.push_back(genres_str);
             }
 
             // expiration date
@@ -298,7 +307,12 @@ sql::ResultSet* search_movies(sql::Connection* con)
             pstmt = con->prepareStatement(query.c_str());
 
             for (int i = 0; i < params.size(); i++)
+            {
                 pstmt->setString(i + 1, params[i].c_str());
+                std::cout << params[i] << " ";
+            }
+
+            std::cout << std::endl << query << std::endl;
 
             pstmt->execute();
             search_results = pstmt->getResultSet();

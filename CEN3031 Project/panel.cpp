@@ -490,7 +490,7 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 							if (ImGui::Button("Add movie"))
 							{
 								// add new entry
-								pstmt = con->prepareStatement("INSERT INTO movies (imdb_id, `Title`, `Year`) VALUES (?, ?, ?)");
+								pstmt = con->prepareStatement("INSERT INTO movies (imdb_id, `Title`, `Year`, Summary) VALUES (?, ?, ?, '')");
 								pstmt->setString(1, _imdb_id);
 								pstmt->setString(2, _movie_title);
 								pstmt->setString(3, _year);
@@ -512,14 +512,18 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 							ImGui::SeparatorText("Search for a book:");
 							ImGui::InputText("Title##Modify existing resources/Title", title, sizeof(title));
 
+							// fields of books to be changed
+							static char _isbn[14] = {};
+							static char _title[257] = {};
+							static char _author[65] = {};
+							static char _publisher[257] = {};
+							static char _year_published[5] = {};
+
 							static sql::ResultSet* search_results = nullptr;
 							if (ImGui::Button("Search"))
 							{
 								pstmt = con->prepareStatement("SELECT * FROM books WHERE `Book-Title` LIKE ?");
-								std::string _title{ "%" };
-								_title.append(title);
-								_title.append("%");
-								pstmt->setString(1, _title.c_str());
+								pstmt->setString(1, (std::string("%") + title + "%").c_str());
 								pstmt->execute();
 
 								search_results = pstmt->getResultSet();
@@ -528,6 +532,13 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 								pstmt = nullptr;
 
 								memset(&title, 0, sizeof(title));
+
+								// reset fields
+								memset(&_isbn, 0, sizeof(_isbn));
+								memset(&_title, 0, sizeof(_title));
+								memset(&_author, 0, sizeof(_author));
+								memset(&_publisher, 0, sizeof(_publisher));
+								memset(&_year_published, 0, sizeof(_year_published));
 							}
 
 							ImGui::BeginChild("Inventory/Listings", ImVec2(800, 500), 0, ImGuiWindowFlags_HorizontalScrollbar);
@@ -548,12 +559,7 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 
 									if (ImGui::CollapsingHeader(header.c_str()))
 									{
-										// initialize fields
-										static char _isbn[14] = {};
-										static char _title[257] = {};
-										static char _author[65] = {};
-										static char _publisher[257] = {};
-										static char _year_published[5] = {};
+
 
 										if (_isbn[0] == '\0')
 										{
