@@ -461,7 +461,7 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 							if (ImGui::Button("Add book"))
 							{
 								// add new entry
-								pstmt = con->prepareStatement("INSERT INTO books (ISBN, `Book-Title`, `Book-Author`, Publisher, `Year-Of-Publication`) VALUES (?, ?, ?, ?, ?)");
+								pstmt = con->prepareStatement("INSERT INTO books (ISBN, `Book-Title`, `Book-Author`, Publisher, `Year-Of-Publication`, Summary, genre, num_copies, location) VALUES (?, ?, ?, ?, ?, '', '', 1, 1)");
 								pstmt->setString(1, _isbn);
 								pstmt->setString(2, _title);
 								pstmt->setString(3, _author);
@@ -490,7 +490,7 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 							if (ImGui::Button("Add movie"))
 							{
 								// add new entry
-								pstmt = con->prepareStatement("INSERT INTO movies (imdb_id, `Title`, `Year`, Summary) VALUES (?, ?, ?, '')");
+								pstmt = con->prepareStatement("INSERT INTO movies (imdb_id, `Title`, `Year`, Summary, Genre, Runtime, num_copies, location) VALUES (?, ?, ?, '', '', '', 1, 1)");
 								pstmt->setString(1, _imdb_id);
 								pstmt->setString(2, _movie_title);
 								pstmt->setString(3, _year);

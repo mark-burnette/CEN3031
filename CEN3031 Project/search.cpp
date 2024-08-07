@@ -107,7 +107,7 @@ sql::ResultSet* search_form(sql::Connection* con)
             params.push_back(date);
 
             // # of copies
-            query += " AND num_copies >= ?";
+            query += " AND (num_copies IS NULL OR num_copies >= ?)";
             params.push_back(num_copies);
 
             // location
@@ -307,12 +307,7 @@ sql::ResultSet* search_movies(sql::Connection* con)
             pstmt = con->prepareStatement(query.c_str());
 
             for (int i = 0; i < params.size(); i++)
-            {
                 pstmt->setString(i + 1, params[i].c_str());
-                std::cout << params[i] << " ";
-            }
-
-            std::cout << std::endl << query << std::endl;
 
             pstmt->execute();
             search_results = pstmt->getResultSet();
