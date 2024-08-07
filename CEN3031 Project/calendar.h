@@ -26,9 +26,10 @@ public:
 	bool is_viewable = 0;
 	int my_image_width = 0;
 	int my_image_height = 0;
+	int employee_id;
 	ID3D11ShaderResourceView* my_texture = NULL;
 	Event() = default;
-	Event(int &_id, std::string &_name, std::string &_date, std::string& _time, std::string &_desc, std::string& _filename, bool &_is_viewable,int &_my_image_height, int& _my_image_width, ID3D11ShaderResourceView* _my_texture) {
+	Event(int &_id, std::string &_name, std::string &_date, std::string& _time, std::string &_desc, std::string& _filename, bool &_is_viewable,int &_my_image_height, int& _my_image_width, ID3D11ShaderResourceView* _my_texture, int& _employee_id) {
 		id = _id;
 		name = _name;
 		date = _date;
@@ -39,6 +40,7 @@ public:
 		my_image_height = _my_image_height;
 		my_image_width = _my_image_width;
 		my_texture = _my_texture;
+		employee_id = _employee_id;
 	}
 };
 extern std::map<std::string, std::vector<Event*>> calendar;
