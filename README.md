@@ -2,8 +2,8 @@
 ## Installation Instructions
 1. Download and run the OpenSSL installer from https://slproweb.com/products/Win32OpenSSL.html.
 Use the “Win64 OpenSSL v3.3.1” version (not the “Light” version).
-2. Download MySQL and MySQL Workbench (https://dev.mysql.com/downloads/installer/). MySQL is for the database and MySQL Workbench provides an interface to debug the database. I followed this tutorial.
-3. Using MySQL Workbench, import the database.sql file from GitHub. You do this by going to Server->Data Import, then selecting “Import from Self-Contained file” and selecting the database.sql file.
+2. Download MySQL and MySQL Workbench (https://dev.mysql.com/downloads/installer/). MySQL is for the database and MySQL Workbench provides an interface to debug the database. There should be no password for the SQL server.
+3. Using MySQL Workbench, import the database.sql file from GitHub. You do this by going to Server->Data Import, then selecting “Import from Self-Contained file” and selecting the database.sql file. The schema should be “test_db”.
 4. Open up the “CEN3031 Project.sln” file. In the solution explorer, right-click on the project and go to Properties->Configuration Properties->C/C++->General. In the field that says “Additional Include Directories”, paste this string: C:\Program Files\OpenSSL-Win64\include;..\mysql-connector-c++-9.0.0-winx64\include\jdbc;../imgui;../imgui/backends;%(AdditionalIncludeDirectories)
 5. Go to Properties->Configuration Properties->C/C++->Preprocessor. Go the the field that says “Preprocessor Definitions” and paste this string: STATIC_CONCPP;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)
 6. Go to Properties->Configuration Properties->Linker->General. Go to the field that says “Additional Library Directories” and paste this string: ..\mysql-connector-c++-9.0.0-winx64\lib64\vs14;$(DXSDK_DIR)/Lib/x64;%(AdditionalLibraryDirectories)
