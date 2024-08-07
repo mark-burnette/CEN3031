@@ -4,6 +4,8 @@ bool list = false;
 
 #include <unordered_map>
 #include <time.h>
+#include <sstream>
+#include <iomanip>
 
 #include "imgui.h"
 #include "list.h"
@@ -64,6 +66,7 @@ bool LoadTextureFromFile(const char* filename, ID3D11ShaderResourceView** out_sr
 
 bool has_overdue_items(sql::Connection* con, sql::ResultSet* user)
 {
+	// check for overdue books
 	sql::PreparedStatement* pstmt = con->prepareStatement("SELECT * FROM books WHERE `checked-out-by` = ? AND CURDATE() > `expiration-date`");
 
 	user->first();
@@ -71,6 +74,28 @@ bool has_overdue_items(sql::Connection* con, sql::ResultSet* user)
 	pstmt->execute();
 
 	sql::ResultSet* res = pstmt->getResultSet();
+
+	delete pstmt;
+	pstmt = nullptr;
+
+	if (res && res->first())
+		return true;
+
+	delete res;
+	res = nullptr;
+
+	// check for overdue movies
+	pstmt = con->prepareStatement("SELECT * FROM movies WHERE `checked-out-by` = ? AND CURDATE() > `expiration-date`");
+
+	user->first();
+	pstmt->setInt(1, user->getInt("id"));
+	pstmt->execute();
+
+	res = pstmt->getResultSet();
+
+	delete pstmt;
+	pstmt = nullptr;
+
 	if (res && res->first())
 		return true;
 
@@ -108,22 +133,33 @@ int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSe
 		{
 			id++;
 			std::string header{ search_results->getString("Book-Title").c_str() };
-			header.append(" (ISBN: ");
-			header.append(search_results->getString("ISBN").c_str());
-			header.append(")##");
+			header.append("##");
 			header.append(std::to_string(id));
 
 			if (ImGui::CollapsingHeader(header.c_str()))
 			{
-				ImGui::Text("Author: ");
+				ImGui::Text("Author:");
 				ImGui::SameLine(); ImGui::Text(search_results->getString("Book-Author").c_str());
 
-				if (search_results->getString("checked-out-by").length() > 0)
-				{
-					ImGui::Text("Unavailable");
-					ImGui::Text("To be returned by: ");
-					ImGui::SameLine(); ImGui::Text(search_results->getString("expiration-date").c_str());
-				}
+				ImGui::Text("Publisher:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("Publisher").c_str());
+				ImGui::SameLine(); ImGui::Text((std::string("(") + search_results->getString("Year-Of-Publication").c_str() + ")").c_str());
+
+				ImGui::Text("ISBN:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("ISBN").c_str());
+
+				ImGui::Text("Genre:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("genre").c_str());
+
+				ImGui::Text("Summary:");
+				ImGui::TextWrapped(search_results->getString("Summary").c_str());
+				ImGui::Spacing();
+
+				ImGui::Text("Location:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("location").c_str());
+
+				ImGui::Text("Number of copies:");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("num_copies").c_str());
 
 				std::string filename{ search_results->getString("ISBN").c_str() };
 				filename.append(std::to_string(id));
@@ -153,18 +189,44 @@ int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSe
 				ImGui::Image((void*)my_texture, ImVec2(my_image_width, my_image_height));
 
 				// get checkout time 
-				std::time_t time = std::time(nullptr);
-				std::tm local_time;
-				localtime_s(&local_time, &time);
-
 				static char date[11] = {};
-				strftime(date, 11, "%Y-%m-%d", &local_time);
+				if (date[0] == '\0')
+				{
+					std::time_t time = std::time(nullptr);
+					std::tm local_time;
+					localtime_s(&local_time, &time);
+					strftime(date, 11, "%Y-%m-%d", &local_time);
+				}
 
 				bool schedule_checkout = false;
 				ImGui::SetNextItemWidth(ImGui::CalcTextSize("(YYYY-MM-DD)").x);
 				ImGui::InputText("Checkout date (YYYY-MM-DD)", date, 11);
 
-				schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+				// if scheduled checkout time < item's expiration date, checkout should fail
+				std::stringstream date_stream{date};
+				std::tm _tm{};
+				date_stream >> std::get_time(&_tm, "%Y-%m-%d");
+				time_t time_1 = std::mktime(&_tm);
+
+				std::stringstream date_stream2{search_results->getString("expiration-date").c_str()};
+				std::tm _tm_2{};
+				date_stream2 >> std::get_time(&_tm_2, "%Y-%m-%d");
+				time_t time_2 = std::mktime(&_tm_2);
+
+				if (time_2 == -1 || difftime(time_1, time_2) > 0)
+				{
+					schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+				}
+				else
+				{
+					ImGui::BeginDisabled(true);
+					ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+					ImGui::EndDisabled();
+
+					std::string unavailable_tooltip = std::string("[Unavailable] To be returned by: ");
+					unavailable_tooltip += search_results->getString("expiration-date").c_str();
+					ImGui::SetItemTooltip(unavailable_tooltip.c_str());
+				}
 
 				if (schedule_checkout)
 				{
@@ -201,19 +263,19 @@ int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSe
 						memset(date, 0, 11);
 					}
 				}
-
-				if (ImGui::BeginPopup("Not logged in"))
-				{
-					ImGui::Text("You are not logged in.");
-					ImGui::EndPopup();
-				}
-
-				if (ImGui::BeginPopup("Overdue items"))
-				{
-					ImGui::Text("Please return any overdue items before checking out new ones.");
-					ImGui::EndPopup();
-				}
 			}
+		}
+
+		if (ImGui::BeginPopup("Not logged in"))
+		{
+			ImGui::Text("You are not logged in.");
+			ImGui::EndPopup();
+		}
+
+		if (ImGui::BeginPopup("Overdue items"))
+		{
+			ImGui::Text("Please return any overdue items before checking out new ones.");
+			ImGui::EndPopup();
 		}
 	}
 	catch (const sql::SQLException& e)
@@ -225,4 +287,152 @@ int listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSe
 
     ImGui::EndChild();
     return 0;
+}
+
+int movies_listings(sql::Connection* con, sql::ResultSet* search_results, sql::ResultSet* user)
+{
+	if (!list)
+		return 1;
+
+	ImGui::BeginChild("Listings", ImVec2(800, 500), 0, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::Spacing();
+	ImGui::SeparatorText("Results");
+
+	if (search_results)
+		search_results->beforeFirst();
+
+	if (!search_results || !search_results->next())
+	{
+		ImGui::Text("No results.");
+		ImGui::EndChild();
+		return 0;
+	}
+
+	sql::PreparedStatement* pstmt = nullptr;
+
+	try
+	{
+		// if not rendering window, return
+		// unique id for ImGui
+		int id = 0;
+		search_results->beforeFirst();
+		while (search_results->next())
+		{
+			id++;
+			std::string header{ search_results->getString("Title").c_str() };
+			header.append(" (");
+			header.append(search_results->getString("Year").c_str());
+			header.append(")");
+
+			if (ImGui::CollapsingHeader(header.c_str()))
+			{
+				ImGui::Text("Genre: ");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("Genre").c_str());
+
+				ImGui::Text("Runtime: ");
+				ImGui::SameLine(); ImGui::Text(search_results->getString("Runtime").c_str());
+
+				ImGui::Text("Summary: ");
+				ImGui::TextWrapped(search_results->getString("Summary").c_str());
+				ImGui::Text("\n");
+
+				// get checkout time 
+				static char date[11] = {};
+				if (date[0] == '\0')
+				{
+					std::time_t time = std::time(nullptr);
+					std::tm local_time;
+					localtime_s(&local_time, &time);
+					strftime(date, 11, "%Y-%m-%d", &local_time);
+				}
+
+				bool schedule_checkout = false;
+				ImGui::SetNextItemWidth(ImGui::CalcTextSize("(YYYY-MM-DD)").x);
+				ImGui::InputText("Checkout date (YYYY-MM-DD)", date, 11);
+
+				// if scheduled checkout time < item's expiration date, checkout should fail
+				std::stringstream date_stream{date};
+				std::tm _tm{};
+				date_stream >> std::get_time(&_tm, "%Y-%m-%d");
+				time_t time_1 = std::mktime(&_tm);
+
+				std::stringstream date_stream2{search_results->getString("expiration-date").c_str()};
+				std::tm _tm_2{};
+				date_stream2 >> std::get_time(&_tm_2, "%Y-%m-%d");
+				time_t time_2 = std::mktime(&_tm_2);
+
+				if (time_2 == -1 || difftime(time_1, time_2) > 0)
+				{
+					schedule_checkout = ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+				}
+				else
+				{
+					ImGui::BeginDisabled(true);
+					ImGui::Button((std::string("Schedule Checkout##").append(std::to_string(id))).c_str());
+					ImGui::EndDisabled();
+
+					std::string unavailable_tooltip = std::string("[Unavailable] To be returned by: ");
+					unavailable_tooltip += search_results->getString("expiration-date").c_str();
+					ImGui::SetItemTooltip(unavailable_tooltip.c_str());
+				}
+
+				if (schedule_checkout)
+				{
+					if (!user)
+					{
+						// if not logged in, force login
+						ImGui::OpenPopup("Not logged in");
+					}
+					else if (has_overdue_items(con, user))
+					{
+						// if user has overdue items, reject checkout
+						ImGui::OpenPopup("Overdue items");
+					}
+					else
+					{
+						// otherwise, process checkout
+						std::string req{ "INSERT INTO requested_checkouts_movies (imdb_id, user, Title, date_requested) VALUES (?, ?, ?, '" };
+						req += date;
+						req += "')";
+
+						pstmt = con->prepareStatement(req.c_str());
+
+						pstmt->setString(1, search_results->getString("imdb_id"));
+
+						user->first();
+
+						pstmt->setInt(2, user->getInt("id"));
+						pstmt->setString(3, search_results->getString("Title"));
+						pstmt->execute();
+
+						delete pstmt;
+						pstmt = nullptr;
+
+						memset(date, 0, 11);
+					}
+				}
+			}
+		}
+
+		if (ImGui::BeginPopup("Not logged in"))
+		{
+			ImGui::Text("You are not logged in.");
+			ImGui::EndPopup();
+		}
+
+		if (ImGui::BeginPopup("Overdue items"))
+		{
+			ImGui::Text("Please return any overdue items before checking out new ones.");
+			ImGui::EndPopup();
+		}
+	}
+	catch (const sql::SQLException& e)
+	{
+		std::cerr << "Error: " << e.what() << std::endl;
+		delete pstmt;
+		pstmt = nullptr;
+	}
+
+	ImGui::EndChild();
+	return 0;
 }

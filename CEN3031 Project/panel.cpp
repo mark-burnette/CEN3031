@@ -24,7 +24,7 @@
 *	tab to approve events
 */
 
-void panel(sql::Connection* con, sql::ResultSet* user)
+void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> events, bool& reload)
 {
 	ImGui::Begin("User Panel", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 
@@ -32,25 +32,36 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 
 	static sql::ResultSet* res = nullptr;
 	static sql::PreparedStatement* pstmt = nullptr;
+	sql::ResultSet* user_notifs = nullptr;
 	try
 	{
 		if (ImGui::BeginTabBar("TabBar"))
 		{
 			// catalogue and events can be viewed by everyone
 			// TODO: change so that admins/employees cannot check out books
-			if (ImGui::BeginTabItem("Catalogue"))
+			if (ImGui::BeginTabItem("Books"))
 			{
 				sql::ResultSet* search_results = search_form(con);
 				listings(con, search_results, user);
 
 				ImGui::EndTabItem();
-				previous_tab = "Catalogue";
+				previous_tab = "Books";
+				search_results = nullptr;
+			}
+
+			if (ImGui::BeginTabItem("Movies"))
+			{
+				sql::ResultSet* search_results = search_movies(con);
+				movies_listings(con, search_results, user);
+
+				ImGui::EndTabItem();
+				previous_tab = "Movies";
 				search_results = nullptr;
 			}
 
 			if (ImGui::BeginTabItem("Events"))
 			{
-				draw_calendar(getEvents(con));
+				draw_calendar(events, user, con, reload);
 				ImGui::EndTabItem();
 
 				previous_tab = "Events";
@@ -59,6 +70,37 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 			if (user)
 			{
 				user->first();
+				ImGui::SetNextWindowSize(ImVec2(400, 200));
+				ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.83f, ImGui::GetIO().DisplaySize.y * 0.2f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+				if (ImGui::Begin("Notifications", nullptr, ImGuiWindowFlags_NoCollapse)) {
+					pstmt = con->prepareStatement("SELECT * FROM notifs WHERE `user_id` = ?");
+					pstmt->setInt(1, user->getInt("id"));
+					pstmt->execute();
+
+					user_notifs = pstmt->getResultSet();
+					delete pstmt;
+					pstmt = nullptr;
+
+					if (!user_notifs->first()) {
+						ImGui::Text("No notifications.");
+					}
+					else {
+						user_notifs->afterLast();
+						while (user_notifs->previous()) {
+							ImGui::TextWrapped(user_notifs->getString("text").c_str());
+							if (ImGui::Button("Delete")) {
+								pstmt = con->prepareStatement("DELETE FROM notifs WHERE notif_id = ? and user_id = ?");
+								pstmt->setInt(1, user_notifs->getInt("notif_id"));
+								pstmt->setInt(2, user_notifs->getInt("user_id"));
+								pstmt->execute();
+
+								delete pstmt;
+								pstmt = nullptr;
+							}
+						}
+					}
+					ImGui::End();
+				}
 
 				if (user->getString("role") == "user")
 				{
@@ -66,6 +108,9 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 					{
 						static sql::ResultSet* checked_out_books = nullptr;
 						static sql::ResultSet* pending_books = nullptr;
+
+						static sql::ResultSet* checked_out_movies = nullptr;
+						static sql::ResultSet* pending_movies = nullptr;
 
 						// update only when tab clicked
 						if (previous_tab != "My Items")
@@ -86,12 +131,32 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 							pending_books = pstmt->getResultSet();
 
 							delete pstmt;
+							//pstmt = nullptr;
+
+
+							pstmt = con->prepareStatement("SELECT * FROM movies WHERE `checked-out-by` = ?");
+
+							pstmt->setInt(1, user->getInt("id"));
+							pstmt->execute();
+
+							checked_out_movies = pstmt->getResultSet();
+
+							delete pstmt;
+
+							pstmt = con->prepareStatement("SELECT * FROM requested_checkouts_movies WHERE user = ?");
+							pstmt->setInt(1, user->getInt("id"));
+							pstmt->execute();
+
+							pending_movies = pstmt->getResultSet();
+
+							delete pstmt;
 							pstmt = nullptr;
 						}
 
 						if (ImGui::CollapsingHeader("Checked-out items##My Items/Checked-out items"))
 						{
 							// list checkouts
+							ImGui::Text("Books:");
 							checked_out_books->beforeFirst();
 							while (checked_out_books->next())
 							{
@@ -101,16 +166,36 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 								if (!checked_out_books->isLast())
 									ImGui::Separator();
 							}
+
+							ImGui::Text("\nMovies:");
+							checked_out_movies->beforeFirst();
+							while (checked_out_movies->next())
+							{
+								ImGui::Text(checked_out_movies->getString("Title").c_str());
+								//ImGui::SameLine(); ImGui::Text(std::string(("(") + checked_out_movies->getString("Year") + ")").c_str());
+								ImGui::Text((std::string("Due date: ") + checked_out_movies->getString("expiration-date").c_str()).c_str());
+								if (!checked_out_movies->isLast())
+									ImGui::Separator();
+							}
 						}
 
 						if (ImGui::CollapsingHeader("Pending checkouts##My Items/Pending checkouts"))
 						{
 							// list pending checkouts
+							ImGui::Text("Books:");
 							pending_books->beforeFirst();
 							while (pending_books->next())
 							{
 								ImGui::Text(pending_books->getString("title").c_str());
 								ImGui::SameLine(); ImGui::Text(std::string(("(ISBN: ") + pending_books->getString("ISBN") + ")").c_str());
+							}
+
+							ImGui::Text("\nMovies:");
+							pending_movies->beforeFirst();
+							while (pending_movies->next())
+							{
+								ImGui::Text(pending_movies->getString("Title").c_str());
+								//ImGui::SameLine(); ImGui::Text(std::string(("(") + pending_movies->getString("Year") + ")").c_str());
 							}
 						}
 
@@ -147,6 +232,8 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 						static int do_search = false;
 						static sql::ResultSet* checked_out_books = nullptr;
 						static sql::ResultSet* pending_books = nullptr;
+						static sql::ResultSet* checked_out_movies = nullptr;
+						static sql::ResultSet* pending_movies = nullptr;
 
 						if (ImGui::Button("Search"))
 							do_search = true;
@@ -183,6 +270,25 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 							pending_books = pstmt->getResultSet();
 
 							delete pstmt;
+
+
+
+							pstmt = con->prepareStatement("SELECT * FROM movies WHERE `checked-out-by` = ?");
+
+							pstmt->setInt(1, user_id);
+							pstmt->execute();
+
+							checked_out_movies = pstmt->getResultSet();
+
+							delete pstmt;
+
+							pstmt = con->prepareStatement("SELECT * FROM requested_checkouts_movies WHERE user = ?");
+							pstmt->setInt(1, user_id);
+							pstmt->execute();
+
+							pending_movies = pstmt->getResultSet();
+
+							delete pstmt;
 							pstmt = nullptr;
 
 							memset(&username, 0, 32);
@@ -191,17 +297,18 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 
 						if (ImGui::CollapsingHeader("Checked-out items##Checkouts/Checked-out items"))
 						{
-							if (!checked_out_books || !checked_out_books->first())
+							if ((!checked_out_books || !checked_out_books->first()) && (!checked_out_movies || !checked_out_movies->first()))
 								ImGui::Text("No results.");
 							else
 							{
+								ImGui::Text("Books:");
 								int id = 0;
 								checked_out_books->beforeFirst();
 								while (checked_out_books->next())
 								{
 									id++;
 
-									ImGui::Text(checked_out_books->getString("checked-out-by").c_str()); // TODO: display name instead of user id
+									//ImGui::Text(checked_out_books->getString("checked-out-by").c_str()); // TODO: display name instead of user id
 									ImGui::Text(checked_out_books->getString("Book-Title").c_str());
 									ImGui::SameLine(); ImGui::Text((std::string("(ISBN: ") + checked_out_books->getString("ISBN").c_str() + std::string(")")).c_str());
 
@@ -219,22 +326,48 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 										do_search = true;
 									}
 								}
+
+								ImGui::Text("\nMovies:");
+								checked_out_movies->beforeFirst();
+								while (checked_out_movies->next())
+								{
+									id++;
+
+									//ImGui::Text(checked_out_movies->getString("checked-out-by").c_str()); // TODO: display name instead of user id
+									ImGui::Text(checked_out_movies->getString("Title").c_str());
+									//ImGui::SameLine(); ImGui::Text((std::string("(ISBN: ") + checked_out_books->getString("ISBN").c_str() + std::string(")")).c_str());
+
+									if (ImGui::Button((std::string("Return##") + std::to_string(id)).c_str()))
+									{
+										// remove from checkouts
+										pstmt = con->prepareStatement("UPDATE movies SET `checked-out-by` = NULL, `date-checked-out` = NULL, `expiration-date` = NULL WHERE imdb_id = ? AND `Title` = ?");
+										pstmt->setString(1, checked_out_movies->getString("imdb_id"));
+										pstmt->setString(2, checked_out_movies->getString("Title"));
+										pstmt->execute();
+
+										delete pstmt;
+										pstmt = nullptr;
+
+										do_search = true;
+									}
+								}
 							}
 						}
 
 						if (ImGui::CollapsingHeader("Pending checkouts##Checkouts/Pending checkouts"))
 						{
-							if (!pending_books || !pending_books->first())
+							if ((!pending_books || !pending_books->first()) && (!pending_movies || !pending_movies->first()))
 								ImGui::Text("No results.");
 							else
 							{
 								int id = 0;
+								ImGui::Text("Books:");
 								pending_books->beforeFirst();
 								while (pending_books->next())
 								{
 									id++;
 
-									ImGui::Text(pending_books->getString("user").c_str()); // TODO: display name instead of user id
+									//ImGui::Text(pending_books->getString("user").c_str()); // TODO: display name instead of user id
 									ImGui::Text(pending_books->getString("title").c_str());
 									ImGui::SameLine(); ImGui::Text((std::string("(ISBN: ") + pending_books->getString("ISBN").c_str() + std::string(")")).c_str());
 
@@ -253,9 +386,19 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 										delete pstmt;
 
 										// mark book as checked out and set return date for 1 month after checkout 
-										pstmt = con->prepareStatement("UPDATE books SET `checked-out-by` = ?, `date-checked-out` = ?, `expiration-date` = DATE_ADD(CURDATE(), INTERVAL 1 MONTH) WHERE ISBN = ?");
+										pstmt = con->prepareStatement("UPDATE books SET `checked-out-by` = ?, `date-checked-out` = CURDATE(), `expiration-date` = DATE_ADD(CURDATE(), INTERVAL 1 MONTH), `last-checked-out` = ? WHERE ISBN = ?");
 										pstmt->setInt(1, pending_books->getInt("user"));
-										pstmt->setString(2, pending_books->getString("ISBN"));
+										pstmt->setInt(2, pending_books->getInt("user"));
+										pstmt->setString(3, pending_books->getString("ISBN"));
+										pstmt->execute();
+
+										delete pstmt;
+										pstmt = nullptr;
+
+										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
+										pstmt->setInt(1, pending_books->getInt("user"));
+										std::string message = (pending_books->getString("title") + " has been checked out!");
+										pstmt->setString(2, message);
 										pstmt->execute();
 
 										delete pstmt;
@@ -266,6 +409,15 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 
 									if (reject)
 									{
+										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
+										pstmt->setInt(1, pending_books->getInt("user"));
+										std::string message = ("Checkout for " + pending_books->getString("title") + " was rejected.");
+										pstmt->setString(2, message);
+										pstmt->execute();
+
+										delete pstmt;
+										pstmt = nullptr;
+
 										// remove from requested_checkouts
 										pstmt = con->prepareStatement("DELETE FROM requested_checkouts WHERE ISBN = ? AND user = ?");
 										pstmt->setString(1, pending_books->getString("ISBN"));
@@ -275,7 +427,75 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 										delete pstmt;
 										pstmt = nullptr;
 
-										// TODO: notify user of rejection
+										do_search = true;
+									}
+								}
+
+
+								ImGui::Text("\nMovies:");
+								pending_movies->beforeFirst();
+								while (pending_movies->next())
+								{
+									id++;
+
+									//ImGui::Text(pending_movies->getString("user").c_str()); // TODO: display name instead of user id
+									ImGui::Text(pending_movies->getString("Title").c_str());
+									//ImGui::SameLine(); ImGui::Text((std::string("(ISBN: ") + pending_books->getString("ISBN").c_str() + std::string(")")).c_str());
+									bool approve = ImGui::Button((std::string("Approve##") + std::to_string(id)).c_str());
+									ImGui::SameLine(); bool reject = ImGui::Button("Reject");
+
+									if (approve)
+									{
+										static sql::ResultSet* checkout_res = nullptr;
+
+										// remove from requested_checkouts (TODO: notify other users that checkout has been rejected)
+										pstmt = con->prepareStatement("DELETE FROM requested_checkouts_movies WHERE imdb_id = ?");
+										pstmt->setString(1, pending_movies->getString("imdb_id"));
+										pstmt->execute();
+
+										delete pstmt;
+
+										// mark book as checked out and set return date for 1 month after checkout 
+										pstmt = con->prepareStatement("UPDATE movies SET `checked-out-by` = ?, `date-checked-out` = CURDATE(), `expiration-date` = DATE_ADD(CURDATE(), INTERVAL 1 MONTH), `last-checked-out` = ? WHERE imdb_id = ?");
+										pstmt->setInt(1, pending_movies->getInt("user"));
+										pstmt->setInt(2, pending_movies->getInt("user"));
+										pstmt->setString(3, pending_movies->getString("imdb_id"));
+										pstmt->execute();
+
+										delete pstmt;
+										pstmt = nullptr;
+
+										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
+										pstmt->setInt(1, pending_movies->getInt("user"));
+										std::string message = (pending_movies->getString("Title") + " has been checked out!");
+										pstmt->setString(2, message);
+										pstmt->execute();
+
+										delete pstmt;
+										pstmt = nullptr;
+
+										do_search = true;
+									}
+
+									if (reject)
+									{
+										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
+										pstmt->setInt(1, pending_movies->getInt("user"));
+										std::string message = ("Checkout for " + pending_movies->getString("Title") + " was rejected.");
+										pstmt->setString(2, message);
+										pstmt->execute();
+
+										delete pstmt;
+										pstmt = nullptr;
+
+										// remove from requested_checkouts
+										pstmt = con->prepareStatement("DELETE FROM requested_checkouts_movies WHERE imdb_id = ? AND user = ?");
+										pstmt->setString(1, pending_movies->getString("imdb_id"));
+										pstmt->setInt(2, pending_movies->getInt("user"));
+										pstmt->execute();
+
+										delete pstmt;
+										pstmt = nullptr;
 
 										do_search = true;
 									}
@@ -321,6 +541,32 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 								memset(&_author, 0, sizeof(_author));
 								memset(&_publisher, 0, sizeof(_publisher));
 								memset(&_year_published, 0, sizeof(_year_published));
+							}
+
+							static char _imdb_id[14] = {};
+							static char _movie_title[257] = {};
+							static char _year[5] = {};
+
+							ImGui::InputText("imdb_id", _imdb_id, sizeof(_imdb_id));
+							ImGui::InputText("Title##idk", _movie_title, sizeof(_movie_title));
+							ImGui::InputText("Year", _year, sizeof(_year));
+
+							if (ImGui::Button("Add movie"))
+							{
+								// add new entry
+								pstmt = con->prepareStatement("INSERT INTO movies (imdb_id, `Title`, `Year`) VALUES (?, ?, ?)");
+								pstmt->setString(1, _imdb_id);
+								pstmt->setString(2, _movie_title);
+								pstmt->setString(3, _year);
+
+								pstmt->execute();
+
+								delete pstmt;
+								pstmt = nullptr;
+
+								memset(&_imdb_id, 0, sizeof(_imdb_id));
+								memset(&_movie_title, 0, sizeof(_movie_title));
+								memset(&_year, 0, sizeof(_year));
 							}
 						}
 						if (ImGui::CollapsingHeader("Modify existing resources"))
@@ -414,8 +660,8 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 							}
 
 							ImGui::EndChild();
-							ImGui::EndTabItem();
 						}
+						ImGui::EndTabItem();
 					}
 
 					ImGui::Spacing();
@@ -428,7 +674,7 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 							static char username[32] = {};
 							static char password[32] = {};
 
-							static std::string role{"user"};
+							static std::string role{ "user" };
 							ImGui::SeparatorText((std::string("Register new ") + role).c_str());
 
 							static int role_idx = 0;
@@ -527,7 +773,6 @@ void panel(sql::Connection* con, sql::ResultSet* user)
 					}
 				}
 			}
-
 			ImGui::EndTabBar();
 		}
 		ImGui::End();
