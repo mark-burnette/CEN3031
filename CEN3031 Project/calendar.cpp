@@ -70,7 +70,7 @@ bool openFile()
 	return TRUE;
 }
 
-void create_event(sql::Connection* con, bool &reload)
+void create_event(sql::Connection* con, bool &reload, sql::ResultSet* user)
 {
 	static char name[45] = {};
 	static char date[11] = {};
@@ -78,6 +78,7 @@ void create_event(sql::Connection* con, bool &reload)
 	static char desc[300] = {};
 	std::string filename;
 	bool is_viewable = 0;
+	sSelectedFile.clear();
 
 	if (ImGui::Button("Create Event..."))
 		ImGui::OpenPopup("Create Event");
@@ -111,15 +112,17 @@ void create_event(sql::Connection* con, bool &reload)
 		
 		if (ImGui::Button("Submit", ImVec2(120, 0))) { 
 			sql::PreparedStatement* pstmt = nullptr;
-			pstmt = con->prepareStatement("INSERT INTO events (`name`, `date`, `time`, `desc`, `filename`) VALUES (?, ?, ?, ?, ?)");
+			pstmt = con->prepareStatement("INSERT INTO events (`name`, `date`, `time`, `desc`, `filename`, `employee_id`) VALUES (?, ?, ?, ?, ?, ?)");
 			pstmt->setString(1, name);
 			pstmt->setString(2, date);
 			pstmt->setString(3, time);
 			pstmt->setString(4, desc);
 			pstmt->setString(5, filename);
+			pstmt->setInt(6, user->getInt("id"));
 			pstmt->execute();
 			delete pstmt;
 			pstmt = nullptr;
+
 			reload = true;
 			ImGui::CloseCurrentPopup(); 
 		}
@@ -148,11 +151,20 @@ void event_request_checker(std::vector<Event*> totEvents, sql::Connection* con, 
 			if((*iter)->is_viewable == false) {
 				ImGui::Text((*iter)->name.c_str());
 				ImGui::SameLine();
+				sql::PreparedStatement* pstmt = nullptr;
 				if (ImGui::Button("Approve"))
 				{
-					sql::PreparedStatement* pstmt = nullptr;
 					pstmt = con->prepareStatement("UPDATE events SET is_viewable = 1 WHERE name = '" + (*iter)->name + "'");
 					pstmt->execute();
+					delete pstmt;
+					pstmt = nullptr;
+
+					pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
+					pstmt->setInt(1, (*iter)->employee_id);
+					std::string message = ("Event request approved for " + (*iter)->name + ".");
+					pstmt->setString(2, message);
+					pstmt->execute();
+
 					delete pstmt;
 					pstmt = nullptr;
 					reload = true;
@@ -160,6 +172,15 @@ void event_request_checker(std::vector<Event*> totEvents, sql::Connection* con, 
 				ImGui::SameLine();
 				if (ImGui::Button("Deny"))
 				{
+					pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
+					pstmt->setInt(1, (*iter)->employee_id);
+					std::string message = ("Event request denied for " + (*iter)->name + ".");
+					pstmt->setString(2, message);
+					pstmt->execute();
+
+					delete pstmt;
+					pstmt = nullptr;
+
 					sql::PreparedStatement* pstmt = nullptr;
 					pstmt = con->prepareStatement("DELETE FROM events WHERE `name` = '" + (*iter)->name + "'");
 					pstmt->execute();
@@ -296,7 +317,7 @@ void draw_calendar(std::vector<Event*> totEvents, sql::ResultSet* user, sql::Con
 					if (user->getString("role") == "user")
 						goto jmp;
 					if (user->getString("role") == "employee" || "admin")
-						create_event(con, reload);
+						create_event(con, reload, user);
 					if (user->getString("role") == "admin")
 						event_request_checker(totEvents, con, reload);
 				}
@@ -331,20 +352,29 @@ std::vector<Event*> getEvents(sql::Connection* con)
 	bool _is_viewable;
 	int _my_image_width = 0;
 	int _my_image_height = 0;
+	int _employee_id;
 	ID3D11ShaderResourceView* _my_texture = NULL;
 	while (event_data->next())
 	{
-		_id =event_data->getInt("id");
+		_my_texture = NULL;
+		_my_image_width = 0;
+		_my_image_height = 0;
+		_id = event_data->getInt("id");
 		_name = event_data->getString("name");
 		_date = event_data->getString("date");
 		_time = event_data->getString("time");
 		_desc = event_data->getString("desc");
 		_filename = event_data->getString("filename");
 		_is_viewable = event_data->getBoolean("is_viewable");
-		bool ret = LoadTextureFromFile(("..\\CEN3031 Project\\images\\" + _filename).c_str(), &_my_texture, &_my_image_width, &_my_image_height);
+		_employee_id = event_data->getInt("employee_id");
+		
+		bool ret = 0;
+		if (_filename != "") {
+			bool ret = LoadTextureFromFile(("..\\CEN3031 Project\\images\\" + _filename).c_str(), &_my_texture, &_my_image_width, &_my_image_height);
+		}
 		IM_ASSERT(ret);
 
-		Event* e = new Event(_id, _name, _date, _time, _desc, _filename, _is_viewable, _my_image_height, _my_image_width, _my_texture);
+		Event* e = new Event(_id, _name, _date, _time, _desc, _filename, _is_viewable, _my_image_height, _my_image_width, _my_texture, _employee_id);
 		events.push_back(e);
 	}
 
