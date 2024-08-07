@@ -24,7 +24,7 @@
 *	tab to approve events
 */
 
-void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> events, bool& reload)
+void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> events, bool &reload)
 {
 	ImGui::Begin("User Panel", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 
@@ -32,7 +32,6 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 
 	static sql::ResultSet* res = nullptr;
 	static sql::PreparedStatement* pstmt = nullptr;
-	sql::ResultSet* user_notifs = nullptr;
 	try
 	{
 		if (ImGui::BeginTabBar("TabBar"))
@@ -70,37 +69,6 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 			if (user)
 			{
 				user->first();
-				ImGui::SetNextWindowSize(ImVec2(400, 200));
-				ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.83f, ImGui::GetIO().DisplaySize.y * 0.2f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-				if (ImGui::Begin("Notifications", nullptr, ImGuiWindowFlags_NoCollapse)) {
-					pstmt = con->prepareStatement("SELECT * FROM notifs WHERE `user_id` = ?");
-					pstmt->setInt(1, user->getInt("id"));
-					pstmt->execute();
-
-					user_notifs = pstmt->getResultSet();
-					delete pstmt;
-					pstmt = nullptr;
-
-					if (!user_notifs->first()) {
-						ImGui::Text("No notifications.");
-					}
-					else {
-						user_notifs->afterLast();
-						while (user_notifs->previous()) {
-							ImGui::TextWrapped(user_notifs->getString("text").c_str());
-							if (ImGui::Button("Delete")) {
-								pstmt = con->prepareStatement("DELETE FROM notifs WHERE notif_id = ? and user_id = ?");
-								pstmt->setInt(1, user_notifs->getInt("notif_id"));
-								pstmt->setInt(2, user_notifs->getInt("user_id"));
-								pstmt->execute();
-
-								delete pstmt;
-								pstmt = nullptr;
-							}
-						}
-					}
-					ImGui::End();
-				}
 
 				if (user->getString("role") == "user")
 				{
@@ -395,29 +363,11 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 										delete pstmt;
 										pstmt = nullptr;
 
-										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
-										pstmt->setInt(1, pending_books->getInt("user"));
-										std::string message = (pending_books->getString("title") + " has been checked out!");
-										pstmt->setString(2, message);
-										pstmt->execute();
-
-										delete pstmt;
-										pstmt = nullptr;
-
 										do_search = true;
 									}
 
 									if (reject)
 									{
-										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
-										pstmt->setInt(1, pending_books->getInt("user"));
-										std::string message = ("Checkout for " + pending_books->getString("title") + " was rejected.");
-										pstmt->setString(2, message);
-										pstmt->execute();
-
-										delete pstmt;
-										pstmt = nullptr;
-
 										// remove from requested_checkouts
 										pstmt = con->prepareStatement("DELETE FROM requested_checkouts WHERE ISBN = ? AND user = ?");
 										pstmt->setString(1, pending_books->getString("ISBN"));
@@ -426,6 +376,8 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 
 										delete pstmt;
 										pstmt = nullptr;
+
+										// TODO: notify user of rejection
 
 										do_search = true;
 									}
@@ -465,29 +417,11 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 										delete pstmt;
 										pstmt = nullptr;
 
-										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
-										pstmt->setInt(1, pending_movies->getInt("user"));
-										std::string message = (pending_movies->getString("Title") + " has been checked out!");
-										pstmt->setString(2, message);
-										pstmt->execute();
-
-										delete pstmt;
-										pstmt = nullptr;
-
 										do_search = true;
 									}
 
 									if (reject)
 									{
-										pstmt = con->prepareStatement("INSERT INTO notifs (`user_id`, `text`) VALUES (?, ?)");
-										pstmt->setInt(1, pending_movies->getInt("user"));
-										std::string message = ("Checkout for " + pending_movies->getString("Title") + " was rejected.");
-										pstmt->setString(2, message);
-										pstmt->execute();
-
-										delete pstmt;
-										pstmt = nullptr;
-
 										// remove from requested_checkouts
 										pstmt = con->prepareStatement("DELETE FROM requested_checkouts_movies WHERE imdb_id = ? AND user = ?");
 										pstmt->setString(1, pending_movies->getString("imdb_id"));
@@ -496,6 +430,8 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 
 										delete pstmt;
 										pstmt = nullptr;
+
+										// TODO: notify user of rejection
 
 										do_search = true;
 									}
@@ -674,7 +610,7 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 							static char username[32] = {};
 							static char password[32] = {};
 
-							static std::string role{ "user" };
+							static std::string role{"user"};
 							ImGui::SeparatorText((std::string("Register new ") + role).c_str());
 
 							static int role_idx = 0;
@@ -773,6 +709,7 @@ void panel(sql::Connection* con, sql::ResultSet* user, std::vector<Event*> event
 					}
 				}
 			}
+
 			ImGui::EndTabBar();
 		}
 		ImGui::End();
